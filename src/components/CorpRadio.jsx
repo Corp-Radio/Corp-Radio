@@ -63,13 +63,29 @@ export default function CorpRadio() {
   const [showVideoPopup, setShowVideoPopup] = useState(false);
   const [selectedShow, setSelectedShow] = useState(null);
   // Refs to observe
-  const sectionIds = ["hero", "shows", "radio", "members", "about", "contact"];
-  const sectionRefs = useRef({});
+const sectionIds = ["hero", "shows", "radio", "introduction", "members", "about", "contact"];  const sectionRefs = useRef({});
 
   //Members only limited viewership
   const [videoWatchTime, setVideoWatchTime] = useState(0);
   const [showTimeoutWarning, setShowTimeoutWarning] = useState(false);
   const videoTimeoutRef = useRef(null);
+
+const scrollTo = (id) => {
+  const element = document.getElementById(id);
+  if (element) {
+    const headerOffset = 80; // Height of your fixed header
+    const elementPosition = element.getBoundingClientRect().top;
+    const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+
+    window.scrollTo({
+      top: offsetPosition,
+      behavior: 'smooth'
+    });
+    
+    // Close mobile menu if it's open
+    setMenuOpen(false);
+  }
+};
 
   useEffect(() => {
     if (!isAuthenticated && videoWatchTime > 0) {
@@ -679,30 +695,47 @@ export default function CorpRadio() {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!validateForm()) return;
+  e.preventDefault();
+  if (!validateForm()) return;
 
-    try {
-      // Call the edge function
-      const { data, error } = await supabase.functions.invoke('send-contact-email', {
-        body: {
-          name: contact.name,
-          email: contact.email,
-          subject: contact.subject,
-          message: contact.message,
-        },
-      });
+  try {
+    console.log('Sending contact form with data:', {
+      name: contact.name,
+      email: contact.email,
+      subject: contact.subject,
+      message: contact.message,
+    });
 
-      if (error) throw error;
+    // Call the edge function
+    const { data, error } = await supabase.functions.invoke('send-contact-email', {
+      body: {
+        name: contact.name,
+        email: contact.email,
+        subject: contact.subject,
+        message: contact.message,
+      },
+    });
 
-      setShowSuccess(true);
-      setContact({ name: "", email: "", subject: "", message: "" });
-      setTimeout(() => setShowSuccess(false), 5000);
-    } catch (error) {
-      console.error('Error sending message:', error);
-      alert('Failed to send message. Please try again.');
+    console.log('Supabase function response:', { data, error });
+
+    if (error) {
+      console.error('Supabase function error details:', error);
+      throw error;
     }
-  };
+
+    setShowSuccess(true);
+    setContact({ name: "", email: "", subject: "", message: "" });
+    setTimeout(() => setShowSuccess(false), 5000);
+  } catch (error) {
+    console.error('Error sending message:', error);
+    console.error('Error details:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
+    alert(`Failed to send message: ${error.message || 'Unknown error'}. Please try again.`);
+  }
+};
 
   // Members Dashboard Component
   const MembersDashboard = () => (
@@ -1915,10 +1948,11 @@ export default function CorpRadio() {
           {menuOpen && (
             <div className="md:hidden py-4 border-t border-gray-200">
               <div className="flex flex-col gap-2">
-                <button className="text-left px-3 py-2 text-sm font-semibold cursor-pointer hover:bg-gray-50 rounded" onClick={() => scrollTo("shows")}>Shows</button>
-                <button className="text-left px-3 py-2 text-sm font-semibold cursor-pointer hover:bg-gray-50 rounded" onClick={() => scrollTo("radio")}>Public Episodes</button>
-                <button className="text-left px-3 py-2 text-sm font-semibold cursor-pointer hover:bg-gray-50 rounded" onClick={() => scrollTo("introduction")}>Introduction</button>                <button className="text-left px-3 py-2 text-sm font-semibold cursor-pointer hover:bg-gray-50 rounded" onClick={() => scrollTo("about")}>About</button>
-                <button className="text-left px-3 py-2 text-sm font-semibold cursor-pointer hover:bg-gray-50 rounded" onClick={() => scrollTo("contact")}>Contact</button>
+                <button className="text-left px-3 py-2 text-sm font-semibold cursor-pointer hover:bg-gray-50 rounded" onClick={() => {scrollTo("shows");setMenuOpen(false);}}>Shows</button>
+                <button className="text-left px-3 py-2 text-sm font-semibold cursor-pointer hover:bg-gray-50 rounded" onClick={() =>{scrollTo("radio");setMenuOpen(false);}}>Public Episodes</button>
+                <button className="text-left px-3 py-2 text-sm font-semibold cursor-pointer hover:bg-gray-50 rounded" onClick={() => {scrollTo("introduction");setMenuOpen(false);}}>Introduction</button>
+                <button className="text-left px-3 py-2 text-sm font-semibold cursor-pointer hover:bg-gray-50 rounded" onClick={() => {scrollTo("about");setMenuOpen(false);}}>About</button>
+                <button className="text-left px-3 py-2 text-sm font-semibold cursor-pointer hover:bg-gray-50 rounded" onClick={() => {scrollTo("contact");setMenuOpen(false);}}>Contact</button>
                 <div className="flex gap-3 px-3 pt-4">
                   {isAuthenticated ? (
                     <>
