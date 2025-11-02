@@ -2121,7 +2121,7 @@ const scrollTo = (id) => {
                     : "bg-white border-2 border-gray-200 text-gray-700 hover:border-[#001F3F]"
                     }`}
                 >
-                  {s.title.replace("Show", "").trim()}
+                  {s.title.replace("Show", "Show").trim()}
                   {!s.isPublic && !isAuthenticated && <Lock className="w-3 h-3" />}
                 </button>
               ))}
