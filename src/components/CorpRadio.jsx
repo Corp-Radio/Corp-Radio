@@ -47,6 +47,12 @@ export default function CorpRadio() {
   });
   const [changePasswordErrors, setChangePasswordErrors] = useState({});
 
+  const [resetPasswordForm, setResetPasswordForm] = useState({
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [resetPasswordErrors, setResetPasswordErrors] = useState({});
+
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [showForgotPassword, setShowForgotPassword] = useState(false);
@@ -209,6 +215,28 @@ export default function CorpRadio() {
   useEffect(() => {
     console.log('Supabase client:', supabase);
     console.log('Is connected:', supabase ? 'Yes' : 'No');
+  }, []);
+
+  // Detect password recovery token in URL
+  useEffect(() => {
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    const accessToken = hashParams.get('access_token');
+    const type = hashParams.get('type');
+
+    if (type === 'recovery' && accessToken) {
+      console.log('Password recovery detected');
+      // Clear the hash from URL
+      window.history.replaceState(null, '', window.location.pathname);
+
+      // Show password reset modal
+      setAuthMode('reset-password');
+      setShowAuthModal(true);
+
+      // Show success message
+      setSuccessMessage('Please enter your new password below');
+      setShowSuccessPopup(true);
+      setTimeout(() => setShowSuccessPopup(false), 3000);
+    }
   }, []);
 
   // Show definitions
@@ -520,7 +548,7 @@ export default function CorpRadio() {
 
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
-        redirectTo: `${window.location.origin}/reset-password`,
+        redirectTo: `${window.location.origin}`,
       });
 
       if (error) throw error;
@@ -530,7 +558,7 @@ export default function CorpRadio() {
       setTimeout(() => {
         setShowResetSuccess(false);
         setShowForgotPassword(false);
-      }, 5000);
+      }, 8000);
     } catch (error) {
       setResetErrors({ email: error.message });
     }
@@ -616,7 +644,55 @@ export default function CorpRadio() {
       setAuthErrors({ general: 'An error occurred during logout. Please try again.' });
     }
   };
+  const handleResetPassword = async (e) => {
+    e.preventDefault();
+    const errors = {};
 
+    if (!resetPasswordForm.newPassword) {
+      errors.newPassword = 'New password is required';
+    } else if (resetPasswordForm.newPassword.length < 6) {
+      errors.newPassword = 'Password must be at least 6 characters';
+    }
+
+    if (resetPasswordForm.newPassword !== resetPasswordForm.confirmPassword) {
+      errors.confirmPassword = 'Passwords do not match';
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setResetPasswordErrors(errors);
+      return;
+    }
+
+    try {
+      console.log('Updating password...');
+
+      const { error } = await supabase.auth.updateUser({
+        password: resetPasswordForm.newPassword
+      });
+
+      if (error) throw error;
+
+      console.log('Password updated successfully');
+
+      setSuccessMessage('Password reset successfully! You can now login with your new password.');
+      setShowSuccessPopup(true);
+      setTimeout(() => setShowSuccessPopup(false), 4000);
+
+      // Close modal and clear form
+      setShowAuthModal(false);
+      setResetPasswordForm({ newPassword: '', confirmPassword: '' });
+      setResetPasswordErrors({});
+
+      // Show login modal after a brief delay
+      setTimeout(() => {
+        openAuthModal('login');
+      }, 1000);
+
+    } catch (error) {
+      console.error('Password reset error:', error);
+      setResetPasswordErrors({ general: error.message });
+    }
+  };
   const openAuthModal = (mode) => {
     setAuthMode(mode);
     setShowAuthModal(true);
@@ -1092,94 +1168,164 @@ export default function CorpRadio() {
                 )}
 
                 {authMode === 'register' && registrationStep === 2 && (
-                  <>
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-1">Business Name</label>
+                <>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">Business Name</label>
+                    <input
+                      type="text"
+                      value={authForm.businessName}
+                      onChange={(e) => setAuthForm({ ...authForm, businessName: e.target.value })}
+                      className={`w-full p-3 border-2 rounded-lg outline-none transition ${authErrors.businessName ? 'border-red-500' : 'border-gray-300 focus:border-[#001F3F]'}`}
+                      placeholder="Your business name"
+                    />
+                    {authErrors.businessName && <p className="text-red-500 text-xs mt-1">{authErrors.businessName}</p>}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">Industry</label>
+                    <select
+                      value={authForm.industry}
+                      onChange={(e) => setAuthForm({ ...authForm, industry: e.target.value })}
+                      className={`w-full p-3 border-2 rounded-lg outline-none transition ${authErrors.industry ? 'border-red-500' : 'border-gray-300 focus:border-[#001F3F]'}`}
+                    >
+                      <option value="">Select your industry</option>
+                      <option value="Technology">Technology</option>
+                      <option value="Finance">Finance</option>
+                      <option value="Healthcare">Healthcare</option>
+                      <option value="Retail">Retail</option>
+                      <option value="Manufacturing">Manufacturing</option>
+                      <option value="Consulting">Consulting</option>
+                      <option value="Real Estate">Real Estate</option>
+                      <option value="Education">Education</option>
+                      <option value="Hospitality">Hospitality</option>
+                      <option value="Other">Other</option>
+                    </select>
+                    {authErrors.industry && <p className="text-red-500 text-xs mt-1">{authErrors.industry}</p>}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">Cell Number (SA)</label>
+                    <input
+                      type="tel"
+                      value={authForm.cellNumber}
+                      onChange={(e) => setAuthForm({ ...authForm, cellNumber: e.target.value })}
+                      className={`w-full p-3 border-2 rounded-lg outline-none transition ${authErrors.cellNumber ? 'border-red-500' : 'border-gray-300 focus:border-[#001F3F]'}`}
+                      placeholder="0821234567"
+                    />
+                    {authErrors.cellNumber && <p className="text-red-500 text-xs mt-1">{authErrors.cellNumber}</p>}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">Location</label>
+                    <input
+                      type="text"
+                      value={authForm.location}
+                      onChange={(e) => setAuthForm({ ...authForm, location: e.target.value })}
+                      className={`w-full p-3 border-2 rounded-lg outline-none transition ${authErrors.location ? 'border-red-500' : 'border-gray-300 focus:border-[#001F3F]'}`}
+                      placeholder="City, Province"
+                    />
+                    {authErrors.location && <p className="text-red-500 text-xs mt-1">{authErrors.location}</p>}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">Current Business Challenge</label>
+                    <textarea
+                      value={authForm.businessChallenge}
+                      onChange={(e) => setAuthForm({ ...authForm, businessChallenge: e.target.value })}
+                      className={`w-full p-3 border-2 rounded-lg outline-none transition ${authErrors.businessChallenge ? 'border-red-500' : 'border-gray-300 focus:border-[#001F3F]'}`}
+                      placeholder="Describe your main business challenge..."
+                      rows={3}
+                    />
+                    {authErrors.businessChallenge && <p className="text-red-500 text-xs mt-1">{authErrors.businessChallenge}</p>}
+                  </div>
+
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRegistrationStep(1);
+                        setAuthErrors({});
+                      }}
+                      className="flex-1 border-2 cursor-pointer border-gray-300 text-gray-700 py-3 rounded-lg font-bold hover:bg-gray-50 transition"
+                    >
+                      Back
+                    </button>
+                    <button type="submit" className="flex-1 bg-[#001F3F] cursor-pointer text-white py-3 rounded-lg font-bold hover:bg-blue-900 transition">
+                      Complete Registration
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {authMode === 'reset-password' && (
+                <form onSubmit={handleResetPassword} className="space-y-4">
+                  {resetPasswordErrors.general && (
+                    <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">
+                      {resetPasswordErrors.general}
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">New Password</label>
+                    <div className="relative">
                       <input
-                        type="text"
-                        value={authForm.businessName}
-                        onChange={(e) => setAuthForm({ ...authForm, businessName: e.target.value })}
-                        className={`w-full p-3 border-2 rounded-lg outline-none transition ${authErrors.businessName ? 'border-red-500' : 'border-gray-300 focus:border-[#001F3F]'}`}
-                        placeholder="Your business name"
+                        type={showPassword ? "text" : "password"}
+                        value={resetPasswordForm.newPassword}
+                        onChange={(e) => {
+                          setResetPasswordForm({ ...resetPasswordForm, newPassword: e.target.value });
+                          if (resetPasswordErrors.newPassword) {
+                            setResetPasswordErrors({ ...resetPasswordErrors, newPassword: '' });
+                          }
+                        }}
+                        className={`w-full p-3 border-2 rounded-lg outline-none transition pr-10 ${resetPasswordErrors.newPassword ? 'border-red-500' : 'border-gray-300 focus:border-[#001F3F]'}`}
+                        placeholder="Enter new password (min 6 characters)"
+                        autoFocus
                       />
-                      {authErrors.businessName && <p className="text-red-500 text-xs mt-1">{authErrors.businessName}</p>}
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-1">Industry</label>
-                      <select
-                        value={authForm.industry}
-                        onChange={(e) => setAuthForm({ ...authForm, industry: e.target.value })}
-                        className={`w-full p-3 border-2 rounded-lg outline-none transition ${authErrors.industry ? 'border-red-500' : 'border-gray-300 focus:border-[#001F3F]'}`}
-                      >
-                        <option value="">Select your industry</option>
-                        <option value="Technology">Technology</option>
-                        <option value="Finance">Finance</option>
-                        <option value="Healthcare">Healthcare</option>
-                        <option value="Retail">Retail</option>
-                        <option value="Manufacturing">Manufacturing</option>
-                        <option value="Consulting">Consulting</option>
-                        <option value="Real Estate">Real Estate</option>
-                        <option value="Education">Education</option>
-                        <option value="Hospitality">Hospitality</option>
-                        <option value="Other">Other</option>
-                      </select>
-                      {authErrors.industry && <p className="text-red-500 text-xs mt-1">{authErrors.industry}</p>}
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-1">Cell Number (SA)</label>
-                      <input
-                        type="tel"
-                        value={authForm.cellNumber}
-                        onChange={(e) => setAuthForm({ ...authForm, cellNumber: e.target.value })}
-                        className={`w-full p-3 border-2 rounded-lg outline-none transition ${authErrors.cellNumber ? 'border-red-500' : 'border-gray-300 focus:border-[#001F3F]'}`}
-                        placeholder="0821234567"
-                      />
-                      {authErrors.cellNumber && <p className="text-red-500 text-xs mt-1">{authErrors.cellNumber}</p>}
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-1">Location</label>
-                      <input
-                        type="text"
-                        value={authForm.location}
-                        onChange={(e) => setAuthForm({ ...authForm, location: e.target.value })}
-                        className={`w-full p-3 border-2 rounded-lg outline-none transition ${authErrors.location ? 'border-red-500' : 'border-gray-300 focus:border-[#001F3F]'}`}
-                        placeholder="City, Province"
-                      />
-                      {authErrors.location && <p className="text-red-500 text-xs mt-1">{authErrors.location}</p>}
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-1">Current Business Challenge</label>
-                      <textarea
-                        value={authForm.businessChallenge}
-                        onChange={(e) => setAuthForm({ ...authForm, businessChallenge: e.target.value })}
-                        className={`w-full p-3 border-2 rounded-lg outline-none transition ${authErrors.businessChallenge ? 'border-red-500' : 'border-gray-300 focus:border-[#001F3F]'}`}
-                        placeholder="Describe your main business challenge..."
-                        rows={3}
-                      />
-                      {authErrors.businessChallenge && <p className="text-red-500 text-xs mt-1">{authErrors.businessChallenge}</p>}
-                    </div>
-
-                    <div className="flex gap-3">
                       <button
                         type="button"
-                        onClick={() => {
-                          setRegistrationStep(1);
-                          setAuthErrors({});
-                        }}
-                        className="flex-1 border-2 cursor-pointer border-gray-300 text-gray-700 py-3 rounded-lg font-bold hover:bg-gray-50 transition"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute cursor-pointer right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                       >
-                        Back
-                      </button>
-                      <button type="submit" className="flex-1 bg-[#001F3F] cursor-pointer text-white py-3 rounded-lg font-bold hover:bg-blue-900 transition">
-                        Complete Registration
+                        {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                       </button>
                     </div>
-                  </>
-                )}
+                    {resetPasswordErrors.newPassword && <p className="text-red-500 text-xs mt-1">{resetPasswordErrors.newPassword}</p>}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">Confirm New Password</label>
+                    <div className="relative">
+                      <input
+                        type={showConfirmPassword ? "text" : "password"}
+                        value={resetPasswordForm.confirmPassword}
+                        onChange={(e) => {
+                          setResetPasswordForm({ ...resetPasswordForm, confirmPassword: e.target.value });
+                          if (resetPasswordErrors.confirmPassword) {
+                            setResetPasswordErrors({ ...resetPasswordErrors, confirmPassword: '' });
+                          }
+                        }}
+                        className={`w-full p-3 border-2 rounded-lg outline-none transition pr-10 ${resetPasswordErrors.confirmPassword ? 'border-red-500' : 'border-gray-300 focus:border-[#001F3F]'}`}
+                        placeholder="Confirm new password"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="absolute cursor-pointer right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      >
+                        {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                      </button>
+                    </div>
+                    {resetPasswordErrors.confirmPassword && <p className="text-red-500 text-xs mt-1">{resetPasswordErrors.confirmPassword}</p>}
+                  </div>
+
+                  <button 
+                    type="submit"
+                    className="w-full bg-[#001F3F] cursor-pointer text-white py-3 rounded-lg font-bold hover:bg-blue-900 transition"
+                  >
+                    Reset Password
+                  </button>
+                </form>
+              )}
 
                 {authMode === 'login' && (
                   <>
@@ -1716,14 +1862,16 @@ export default function CorpRadio() {
                 <Lock className="w-8 h-8 text-white" />
               </div>
               <h2 className="text-2xl font-bold text-[#001F3F] mb-2">
-                {authMode === 'login' ? 'Welcome Back' : registrationStep === 1 ? 'Create Account - Step 1' : 'Create Account - Step 2'}
+                {authMode === 'login' ? 'Welcome Back' : authMode === 'reset-password' ? 'Reset Your Password' : registrationStep === 1 ? 'Create Account - Step 1' : 'Create Account - Step 2'}
               </h2>
               <p className="text-gray-600">
                 {authMode === 'login'
                   ? 'Login to access member content'
-                  : registrationStep === 1
-                    ? 'Personal Information'
-                    : 'Business Information'}
+                  : authMode === 'reset-password'
+                    ? 'Enter your new password'
+                    : registrationStep === 1
+                      ? 'Personal Information'
+                      : 'Business Information'}
               </p>
               {authMode === 'register' && (
                 <div className="flex justify-center gap-2 mt-4">
@@ -1915,6 +2063,76 @@ export default function CorpRadio() {
                     </button>
                   </div>
                 </>
+              )}
+
+              {authMode === 'reset-password' && (
+                <form onSubmit={handleResetPassword} className="space-y-4">
+                  {resetPasswordErrors.general && (
+                    <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">
+                      {resetPasswordErrors.general}
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">New Password</label>
+                    <div className="relative">
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        value={resetPasswordForm.newPassword}
+                        onChange={(e) => {
+                          setResetPasswordForm({ ...resetPasswordForm, newPassword: e.target.value });
+                          if (resetPasswordErrors.newPassword) {
+                            setResetPasswordErrors({ ...resetPasswordErrors, newPassword: '' });
+                          }
+                        }}
+                        className={`w-full p-3 border-2 rounded-lg outline-none transition pr-10 ${resetPasswordErrors.newPassword ? 'border-red-500' : 'border-gray-300 focus:border-[#001F3F]'}`}
+                        placeholder="Enter new password (min 6 characters)"
+                        autoFocus
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute cursor-pointer right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      >
+                        {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                      </button>
+                    </div>
+                    {resetPasswordErrors.newPassword && <p className="text-red-500 text-xs mt-1">{resetPasswordErrors.newPassword}</p>}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">Confirm New Password</label>
+                    <div className="relative">
+                      <input
+                        type={showConfirmPassword ? "text" : "password"}
+                        value={resetPasswordForm.confirmPassword}
+                        onChange={(e) => {
+                          setResetPasswordForm({ ...resetPasswordForm, confirmPassword: e.target.value });
+                          if (resetPasswordErrors.confirmPassword) {
+                            setResetPasswordErrors({ ...resetPasswordErrors, confirmPassword: '' });
+                          }
+                        }}
+                        className={`w-full p-3 border-2 rounded-lg outline-none transition pr-10 ${resetPasswordErrors.confirmPassword ? 'border-red-500' : 'border-gray-300 focus:border-[#001F3F]'}`}
+                        placeholder="Confirm new password"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="absolute cursor-pointer right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      >
+                        {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                      </button>
+                    </div>
+                    {resetPasswordErrors.confirmPassword && <p className="text-red-500 text-xs mt-1">{resetPasswordErrors.confirmPassword}</p>}
+                  </div>
+
+                  <button 
+                    type="submit"
+                    className="w-full bg-[#001F3F] cursor-pointer text-white py-3 rounded-lg font-bold hover:bg-blue-900 transition"
+                  >
+                    Reset Password
+                  </button>
+                </form>
               )}
 
               {authMode === 'login' && (
