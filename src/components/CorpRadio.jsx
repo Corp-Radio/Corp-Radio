@@ -3,7 +3,7 @@ import { Menu, X, Radio, Play, Mic, Users, TrendingUp, Award, Phone, Mail, Youtu
 import "../App.css";
 import logo from "../assets/CorpRadioLogo - Copy.jpeg";
 import footerLogo from "../assets/CorpRadioLogo - Copy.jpeg";
-import businessShow from "../assets/Lester.jpg";
+import businessShow from "../assets/BF Thumbnail image.png";
 import jeffKahn from "../assets/Jeff Kahn.jpeg";
 import charlImage from "../assets/charl1.jpeg";
 import heroBg from "../assets/hero.jpeg";
@@ -54,6 +54,8 @@ export default function CorpRadio() {
   const [resetErrors, setResetErrors] = useState({});
   const [showResetSuccess, setShowResetSuccess] = useState(false);
 
+  const [showLegalModal, setShowLegalModal] = useState(false);
+  const [legalContent, setLegalContent] = useState('');
   // UI state
   const [menuOpen, setMenuOpen] = useState(false);
   const [active, setActive] = useState("hero");
@@ -63,29 +65,29 @@ export default function CorpRadio() {
   const [showVideoPopup, setShowVideoPopup] = useState(false);
   const [selectedShow, setSelectedShow] = useState(null);
   // Refs to observe
-const sectionIds = ["hero", "shows", "radio", "introduction", "members", "about", "contact"];  const sectionRefs = useRef({});
+  const sectionIds = ["hero", "shows", "radio", "introduction", "members", "about", "contact"]; const sectionRefs = useRef({});
 
   //Members only limited viewership
   const [videoWatchTime, setVideoWatchTime] = useState(0);
   const [showTimeoutWarning, setShowTimeoutWarning] = useState(false);
   const videoTimeoutRef = useRef(null);
 
-const scrollTo = (id) => {
-  const element = document.getElementById(id);
-  if (element) {
-    const headerOffset = 80; // Height of your fixed header
-    const elementPosition = element.getBoundingClientRect().top;
-    const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+  const scrollTo = (id) => {
+    const element = document.getElementById(id);
+    if (element) {
+      const headerOffset = 80; // Height of your fixed header
+      const elementPosition = element.getBoundingClientRect().top;
+      const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
 
-    window.scrollTo({
-      top: offsetPosition,
-      behavior: 'smooth'
-    });
-    
-    // Close mobile menu if it's open
-    setMenuOpen(false);
-  }
-};
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: 'smooth'
+      });
+
+      // Close mobile menu if it's open
+      setMenuOpen(false);
+    }
+  };
 
   useEffect(() => {
     if (!isAuthenticated && videoWatchTime > 0) {
@@ -246,7 +248,7 @@ const scrollTo = (id) => {
 
     {
       id: "ai",
-      title: "The AI Playbook Show",
+      title: "The AI Advantage Show",
       host: "Charl Imalman",
       desc: "Real tools, case studies and policies for adopting AI in business workflows.",
       img: charlImage,
@@ -415,19 +417,6 @@ const scrollTo = (id) => {
         });
 
         if (error) throw error;
-        // // Store business info temporarily in user metadata
-        // const { error: updateError } = await supabase.auth.updateUser({
-        //   data: {
-        //     full_name: authForm.fullName,
-        //     business_name: authForm.businessName,
-        //     industry: authForm.industry,
-        //     cell_number: authForm.cellNumber,
-        //     location: authForm.location,
-        //     business_challenge: authForm.businessChallenge,
-        //     profile_completed: false
-        //   }
-        // });
-
 
         // Check if email confirmation is required
         if (data?.user && !data.session) {
@@ -695,47 +684,47 @@ const scrollTo = (id) => {
   };
 
   const handleSubmit = async (e) => {
-  e.preventDefault();
-  if (!validateForm()) return;
+    e.preventDefault();
+    if (!validateForm()) return;
 
-  try {
-    console.log('Sending contact form with data:', {
-      name: contact.name,
-      email: contact.email,
-      subject: contact.subject,
-      message: contact.message,
-    });
-
-    // Call the edge function
-    const { data, error } = await supabase.functions.invoke('send-contact-email', {
-      body: {
+    try {
+      console.log('Sending contact form with data:', {
         name: contact.name,
         email: contact.email,
         subject: contact.subject,
         message: contact.message,
-      },
-    });
+      });
 
-    console.log('Supabase function response:', { data, error });
+      // Call the edge function
+      const { data, error } = await supabase.functions.invoke('send-contact-email', {
+        body: {
+          name: contact.name,
+          email: contact.email,
+          subject: contact.subject,
+          message: contact.message,
+        },
+      });
 
-    if (error) {
-      console.error('Supabase function error details:', error);
-      throw error;
+      console.log('Supabase function response:', { data, error });
+
+      if (error) {
+        console.error('Supabase function error details:', error);
+        throw error;
+      }
+
+      setShowSuccess(true);
+      setContact({ name: "", email: "", subject: "", message: "" });
+      setTimeout(() => setShowSuccess(false), 5000);
+    } catch (error) {
+      console.error('Error sending message:', error);
+      console.error('Error details:', {
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      });
+      alert(`Failed to send message: ${error.message || 'Unknown error'}. Please try again.`);
     }
-
-    setShowSuccess(true);
-    setContact({ name: "", email: "", subject: "", message: "" });
-    setTimeout(() => setShowSuccess(false), 5000);
-  } catch (error) {
-    console.error('Error sending message:', error);
-    console.error('Error details:', {
-      message: error.message,
-      stack: error.stack,
-      name: error.name
-    });
-    alert(`Failed to send message: ${error.message || 'Unknown error'}. Please try again.`);
-  }
-};
+  };
 
   // Members Dashboard Component
   const MembersDashboard = () => (
@@ -1299,11 +1288,144 @@ const scrollTo = (id) => {
             </div>
           </div>
         </header>
-        <MembersDashboard /> 
+        <MembersDashboard />
       </div>
     );
   }
 
+  // Legal Modal Component
+  const LegalModal = () => (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto p-8 relative">
+        <button
+          onClick={() => setShowLegalModal(false)}
+          className="absolute cursor-pointer top-4 right-4 text-gray-400 hover:text-gray-600 sticky top-0"
+        >
+          <X className="w-6 h-6" />
+        </button>
+
+        <div className="prose prose-sm max-w-none">
+          {legalContent === 'privacy' ? (
+            <>
+              <h2 className="text-3xl font-bold text-[#001F3F] mb-6">Privacy Policy</h2>
+
+              <div className="bg-blue-50 border-l-4 border-[#001F3F] p-4 mb-6">
+                <h3 className="text-xl font-bold text-[#001F3F] mb-2">Your Privacy Matters to Us</h3>
+              </div>
+
+              <h3 className="text-xl font-bold text-[#001F3F] mt-6 mb-3">Data Collection</h3>
+              <p className="text-gray-700 mb-4">
+                We collect information you provide, such as email addresses for newsletter subscriptions or account creation.
+                We may also collect usage data (e.g., podcast plays, clicks, and interactions) to improve your experience.
+              </p>
+
+              <h3 className="text-xl font-bold text-[#001F3F] mt-6 mb-3">Use of Data</h3>
+              <ul className="list-disc pl-6 text-gray-700 mb-4">
+                <li>To provide, maintain, and improve the Service.</li>
+                <li>To send updates, announcements, or promotional content (only if you opt-in).</li>
+                <li>To comply with legal obligations.</li>
+              </ul>
+
+              <h3 className="text-xl font-bold text-[#001F3F] mt-6 mb-3">Third-Party Services</h3>
+              <p className="text-gray-700 mb-4">
+                We may use third-party analytics or hosting services, who may process some of your data.
+              </p>
+
+              <h3 className="text-xl font-bold text-[#001F3F] mt-6 mb-3">Cookies</h3>
+              <p className="text-gray-700 mb-4">
+                Corp Radio uses cookies to enhance user experience, track engagement, and personalize content.
+              </p>
+
+              <h3 className="text-xl font-bold text-[#001F3F] mt-6 mb-3">Data Protection</h3>
+              <ul className="list-disc pl-6 text-gray-700 mb-4">
+                <li>We do not sell your personal information.</li>
+                <li>You can request access, updates, or deletion of your data by contacting us.</li>
+              </ul>
+
+              <h3 className="text-xl font-bold text-[#001F3F] mt-6 mb-3">Consent</h3>
+              <p className="text-gray-700 mb-4">
+                By continuing to use the Service, you consent to our Privacy Policy and Terms of Service.
+              </p>
+
+              <h3 className="text-xl font-bold text-[#001F3F] mt-6 mb-3">Contact Information</h3>
+              <p className="text-gray-700">
+                For questions or concerns regarding this Privacy Policy, please contact: <a href="mailto:info@corpradio.online" className="text-[#001F3F] hover:underline">info@corpradio.online</a>
+              </p>
+            </>
+          ) : (
+            <>
+              <h2 className="text-3xl font-bold text-[#001F3F] mb-6">Terms of Service</h2>
+              <p className="text-sm text-gray-500 mb-6">Effective Date: January 2025</p>
+
+              <h3 className="text-xl font-bold text-[#001F3F] mt-6 mb-3">1. Acceptance of Terms</h3>
+              <p className="text-gray-700 mb-4">
+                By accessing or using Corp Radio ("the Service"), you agree to comply with these Terms of Service. If you do not agree, you may not access or use the Service.
+              </p>
+
+              <h3 className="text-xl font-bold text-[#001F3F] mt-6 mb-3">2. Eligibility</h3>
+              <p className="text-gray-700 mb-4">
+                Accounts are intended for users 18 years of age or older. By creating an account or using the Service, you confirm that you meet this age requirement.
+              </p>
+
+              <h3 className="text-xl font-bold text-[#001F3F] mt-6 mb-3">3. Nature of Content</h3>
+              <p className="text-gray-700 mb-4">
+                Corp Radio provides business advice, interviews, and discussions for general informational purposes only. Content may include: podcasts, radio broadcasts, written commentary, or advice shared by presenters and guests. Some scenarios discussed may be fictional, hypothetical, or generalized and may not reflect real situations.
+              </p>
+
+              <h3 className="text-xl font-bold text-[#001F3F] mt-6 mb-3">4. No Professional Advice</h3>
+              <p className="text-gray-700 mb-4">
+                The content is not personalized business advice. For specific business, legal, financial, or investment guidance, users must consult a licensed, trained, or registered professional in the relevant field. Corp Radio, Lester Philander, presenters, and affiliates are not liable for any decisions, losses, or damages resulting from the use of content from the Service.
+              </p>
+
+              <h3 className="text-xl font-bold text-[#001F3F] mt-6 mb-3">5. User Conduct</h3>
+              <ul className="list-disc pl-6 text-gray-700 mb-4">
+                <li>You may not use the Service for unlawful purposes or to violate any applicable laws.</li>
+                <li>Users must not post harmful, threatening, abusive, defamatory, or infringing content.</li>
+                <li>Accounts may be suspended or terminated for violations of these Terms.</li>
+              </ul>
+
+              <h3 className="text-xl font-bold text-[#001F3F] mt-6 mb-3">6. Intellectual Property</h3>
+              <p className="text-gray-700 mb-4">
+                All content, including audio, video, graphics, and written material, is owned or licensed by Corp Radio. Users may stream or download content for personal, non-commercial use only. Reproduction, distribution, or modification without permission is prohibited.
+              </p>
+
+              <h3 className="text-xl font-bold text-[#001F3F] mt-6 mb-3">7. Third-Party Links and Advertisements</h3>
+              <p className="text-gray-700 mb-4">
+                The Service may include links to third-party websites, sponsors, or advertisers. Corp Radio is not responsible for content or practices of third parties, including any losses, damages, or legal implications.
+              </p>
+
+              <h3 className="text-xl font-bold text-[#001F3F] mt-6 mb-3">8. Limitation of Liability</h3>
+              <ul className="list-disc pl-6 text-gray-700 mb-4">
+                <li><strong>Use at Your Own Risk:</strong> All content is provided "as is."</li>
+                <li><strong>No Warranties:</strong> Corp Radio does not guarantee accuracy, completeness, or reliability of content.</li>
+                <li><strong>Disclaimer of Damages:</strong> Under no circumstances shall Corp Radio, its presenters, affiliates, or partners be liable for any direct, indirect, incidental, consequential, or punitive damages arising from your use of the Service.</li>
+              </ul>
+
+              <h3 className="text-xl font-bold text-[#001F3F] mt-6 mb-3">9. Termination</h3>
+              <p className="text-gray-700 mb-4">
+                Corp Radio reserves the right to suspend or terminate accounts or access to the Service at any time, for any reason, including violation of these Terms.
+              </p>
+
+              <h3 className="text-xl font-bold text-[#001F3F] mt-6 mb-3">10. Changes to Terms</h3>
+              <p className="text-gray-700 mb-4">
+                Corp Radio may update these Terms at any time. Users will be notified via email or a notice on the Service. Continued use after updates constitutes acceptance of the revised Terms.
+              </p>
+
+              <h3 className="text-xl font-bold text-[#001F3F] mt-6 mb-3">11. Governing Law</h3>
+              <p className="text-gray-700 mb-4">
+                These Terms shall be governed by and construed in accordance with the laws of South Africa.
+              </p>
+
+              <h3 className="text-xl font-bold text-[#001F3F] mt-6 mb-3">12. Contact Information</h3>
+              <p className="text-gray-700">
+                For questions or concerns regarding these Terms, please contact: <a href="mailto:info@corpradio.online" className="text-[#001F3F] hover:underline">info@corpradio.online</a>
+              </p>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
   return (
     <div className="min-h-screen font-sans antialiased text-gray-900 bg-white">
       {/* Success Popup */}
@@ -1921,9 +2043,7 @@ const scrollTo = (id) => {
                 </>
               ) : (
                 <>
-                  {/* <button onClick={() => scrollTo("contact")} className="text-sm cursor-pointer font-semibold text-[#001F3F] hover:text-blue-800 transition">
-                    Advertise
-                  </button> */}
+
                   <button
                     onClick={() => openAuthModal('login')}
                     className="bg-[#001F3F] text-white cursor-pointer text-sm font-semibold px-5 py-2.5 rounded-lg shadow-md hover:bg-blue-900 transition"
@@ -1948,11 +2068,11 @@ const scrollTo = (id) => {
           {menuOpen && (
             <div className="md:hidden py-4 border-t border-gray-200">
               <div className="flex flex-col gap-2">
-                <button className="text-left px-3 py-2 text-sm font-semibold cursor-pointer hover:bg-gray-50 rounded" onClick={() => {scrollTo("shows");setMenuOpen(false);}}>Shows</button>
-                <button className="text-left px-3 py-2 text-sm font-semibold cursor-pointer hover:bg-gray-50 rounded" onClick={() =>{scrollTo("radio");setMenuOpen(false);}}>Public Episodes</button>
-                <button className="text-left px-3 py-2 text-sm font-semibold cursor-pointer hover:bg-gray-50 rounded" onClick={() => {scrollTo("introduction");setMenuOpen(false);}}>Introduction</button>
-                <button className="text-left px-3 py-2 text-sm font-semibold cursor-pointer hover:bg-gray-50 rounded" onClick={() => {scrollTo("about");setMenuOpen(false);}}>About</button>
-                <button className="text-left px-3 py-2 text-sm font-semibold cursor-pointer hover:bg-gray-50 rounded" onClick={() => {scrollTo("contact");setMenuOpen(false);}}>Contact</button>
+                <button className="text-left px-3 py-2 text-sm font-semibold cursor-pointer hover:bg-gray-50 rounded" onClick={() => { scrollTo("shows"); setMenuOpen(false); }}>Shows</button>
+                <button className="text-left px-3 py-2 text-sm font-semibold cursor-pointer hover:bg-gray-50 rounded" onClick={() => { scrollTo("radio"); setMenuOpen(false); }}>Public Episodes</button>
+                <button className="text-left px-3 py-2 text-sm font-semibold cursor-pointer hover:bg-gray-50 rounded" onClick={() => { scrollTo("introduction"); setMenuOpen(false); }}>Introduction</button>
+                <button className="text-left px-3 py-2 text-sm font-semibold cursor-pointer hover:bg-gray-50 rounded" onClick={() => { scrollTo("about"); setMenuOpen(false); }}>About</button>
+                <button className="text-left px-3 py-2 text-sm font-semibold cursor-pointer hover:bg-gray-50 rounded" onClick={() => { scrollTo("contact"); setMenuOpen(false); }}>Contact</button>
                 <div className="flex gap-3 px-3 pt-4">
                   {isAuthenticated ? (
                     <>
@@ -2333,12 +2453,7 @@ const scrollTo = (id) => {
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div>
               <h3 className="text-3xl md:text-4xl font-bold text-[#001F3F] mb-6">About Corp Radio</h3>
-              {/* <p className="text-gray-700 text-lg leading-relaxed mb-6">
-                Corp Radio is a premium business-focused platform providing content, insights, networking and mentorship for entrepreneurs, corporate leaders and NPOs.
-              </p>
-              <p className="text-gray-700 text-lg leading-relaxed mb-8">
-                Our mission is to empower business leaders with actionable knowledge, valuable connections, and a thriving community dedicated to growth and innovation.
-              </p> */}
+
               <p className="text-gray-700 text-lg leading-relaxed mb-6">
                 Corporates and NPOs for content on Growth, Funding, Marketing, Sales and AI. With knowledgeable presenters and interviewees, Corp Radio becomes the go-to place for established and growing enterprises to get business advice, inspiration and to join a community that fosters collaboration and growth.              </p>
               <p className="text-gray-700 text-lg leading-relaxed mb-8">
@@ -2556,6 +2671,8 @@ const scrollTo = (id) => {
         </div>
       </section>
 
+      {showLegalModal && <LegalModal />}
+
       <footer className="bg-[#001F3F] text-white py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid md:grid-cols-4 gap-8 mb-8">
@@ -2625,8 +2742,24 @@ const scrollTo = (id) => {
                 © 2025 Corp Radio. All rights reserved.
               </div>
               <div className="flex gap-6 text-sm">
-                <a href="#" className="text-gray-400 hover:text-white transition">Privacy Policy</a>
-                <a href="#" className="text-gray-400 hover:text-white transition">Terms of Service</a>
+                <button
+                  onClick={() => {
+                    setLegalContent('privacy');
+                    setShowLegalModal(true);
+                  }}
+                  className="text-gray-400 hover:text-white transition cursor-pointer"
+                >
+                  Privacy Policy
+                </button>
+                <button
+                  onClick={() => {
+                    setLegalContent('terms');
+                    setShowLegalModal(true);
+                  }}
+                  className="text-gray-400 hover:text-white transition cursor-pointer"
+                >
+                  Terms of Service
+                </button>
               </div>
             </div>
           </div>
