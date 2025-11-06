@@ -1445,8 +1445,7 @@ export default function CorpRadio() {
       <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto p-8 relative">
         <button
           onClick={() => setShowLegalModal(false)}
-          className="absolute cursor-pointer top-4 right-4 text-gray-400 hover:text-gray-600 sticky top-0"
-        >
+className="sticky cursor-pointer top-4 left-full -ml-10 text-gray-400 hover:text-gray-600 z-10"        >
           <X className="w-6 h-6" />
         </button>
 
