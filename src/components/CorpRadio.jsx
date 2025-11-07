@@ -212,19 +212,19 @@ export default function CorpRadio() {
 
     return () => subscription.unsubscribe();
   }, []);
-useEffect(() => {
-  const hashParams = new URLSearchParams(window.location.hash.substring(1));
-  const accessToken = hashParams.get('access_token');
-  const type = hashParams.get('type');
+  useEffect(() => {
+    console.log('Supabase client:', supabase);
+    console.log('Is connected:', supabase ? 'Yes' : 'No');
+  }, []);
 
-  if (type === 'recovery' && accessToken) {
-    console.log('Password recovery detected');
-    
-    // Set the session with the recovery token
-    supabase.auth.setSession({
-      access_token: accessToken,
-      refresh_token: hashParams.get('refresh_token') || ''
-    }).then(() => {
+  // Detect password recovery token in URL
+  useEffect(() => {
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    const accessToken = hashParams.get('access_token');
+    const type = hashParams.get('type');
+
+    if (type === 'recovery' && accessToken) {
+      console.log('Password recovery detected');
       // Clear the hash from URL
       window.history.replaceState(null, '', window.location.pathname);
 
@@ -236,9 +236,8 @@ useEffect(() => {
       setSuccessMessage('Please enter your new password below');
       setShowSuccessPopup(true);
       setTimeout(() => setShowSuccessPopup(false), 3000);
-    });
-  }
-}, []);
+    }
+  }, []);
 
   // Show definitions
   const shows = [
@@ -645,8 +644,9 @@ useEffect(() => {
       setAuthErrors({ general: 'An error occurred during logout. Please try again.' });
     }
   };
- const handleResetPassword = async (e) => {
-  e.preventDefault();
+  const handleResetPassword = async (e) => {
+  if (e) e.preventDefault();
+  
   const errors = {};
 
   if (!resetPasswordForm.newPassword) {
@@ -655,7 +655,9 @@ useEffect(() => {
     errors.newPassword = 'Password must be at least 6 characters';
   }
 
-  if (resetPasswordForm.newPassword !== resetPasswordForm.confirmPassword) {
+  if (!resetPasswordForm.confirmPassword) {
+    errors.confirmPassword = 'Please confirm your password';
+  } else if (resetPasswordForm.newPassword !== resetPasswordForm.confirmPassword) {
     errors.confirmPassword = 'Passwords do not match';
   }
 
@@ -667,13 +669,6 @@ useEffect(() => {
   try {
     console.log('Updating password...');
 
-    // Verify we have a valid session
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    if (!session) {
-      throw new Error('No active session found. Please request a new password reset link.');
-    }
-
     const { error } = await supabase.auth.updateUser({
       password: resetPasswordForm.newPassword
     });
@@ -682,25 +677,25 @@ useEffect(() => {
 
     console.log('Password updated successfully');
 
+    setShowAuthModal(false);
+    setAuthMode('login');
+    setResetPasswordForm({ newPassword: '', confirmPassword: '' });
+    setResetPasswordErrors({});
+
     setSuccessMessage('Password reset successfully! You can now login with your new password.');
     setShowSuccessPopup(true);
     setTimeout(() => setShowSuccessPopup(false), 4000);
 
-    // Close modal and clear form
-    setShowAuthModal(false);
-    setResetPasswordForm({ newPassword: '', confirmPassword: '' });
-    setResetPasswordErrors({});
-
-    // Show login modal after a brief delay
     setTimeout(() => {
       openAuthModal('login');
-    }, 1000);
+    }, 1500);
 
   } catch (error) {
     console.error('Password reset error:', error);
-    setResetPasswordErrors({ general: error.message || 'Failed to reset password. Please request a new reset link.' });
+    setResetPasswordErrors({ general: error.message || 'Failed to reset password. Please try again.' });
   }
 };
+
   const openAuthModal = (mode) => {
     setAuthMode(mode);
     setShowAuthModal(true);
@@ -1453,8 +1448,7 @@ useEffect(() => {
       <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto p-8 relative">
         <button
           onClick={() => setShowLegalModal(false)}
-className="sticky cursor-pointer top-4 left-full -ml-10 text-gray-400 hover:text-gray-600 z-10"        >
-          <X className="w-6 h-6" />
+className="sticky cursor-pointer top-4 left-full -ml-10 text-gray-400 hover:text-gray-600 z-10">          <X className="w-6 h-6" />
         </button>
 
         <div className="prose prose-sm max-w-none">
