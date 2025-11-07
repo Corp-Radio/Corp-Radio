@@ -212,19 +212,19 @@ export default function CorpRadio() {
 
     return () => subscription.unsubscribe();
   }, []);
-  useEffect(() => {
-    console.log('Supabase client:', supabase);
-    console.log('Is connected:', supabase ? 'Yes' : 'No');
-  }, []);
+useEffect(() => {
+  const hashParams = new URLSearchParams(window.location.hash.substring(1));
+  const accessToken = hashParams.get('access_token');
+  const type = hashParams.get('type');
 
-  // Detect password recovery token in URL
-  useEffect(() => {
-    const hashParams = new URLSearchParams(window.location.hash.substring(1));
-    const accessToken = hashParams.get('access_token');
-    const type = hashParams.get('type');
-
-    if (type === 'recovery' && accessToken) {
-      console.log('Password recovery detected');
+  if (type === 'recovery' && accessToken) {
+    console.log('Password recovery detected');
+    
+    // Set the session with the recovery token
+    supabase.auth.setSession({
+      access_token: accessToken,
+      refresh_token: hashParams.get('refresh_token') || ''
+    }).then(() => {
       // Clear the hash from URL
       window.history.replaceState(null, '', window.location.pathname);
 
@@ -236,8 +236,9 @@ export default function CorpRadio() {
       setSuccessMessage('Please enter your new password below');
       setShowSuccessPopup(true);
       setTimeout(() => setShowSuccessPopup(false), 3000);
-    }
-  }, []);
+    });
+  }
+}, []);
 
   // Show definitions
   const shows = [
@@ -644,55 +645,62 @@ export default function CorpRadio() {
       setAuthErrors({ general: 'An error occurred during logout. Please try again.' });
     }
   };
-  const handleResetPassword = async (e) => {
-    e.preventDefault();
-    const errors = {};
+ const handleResetPassword = async (e) => {
+  e.preventDefault();
+  const errors = {};
 
-    if (!resetPasswordForm.newPassword) {
-      errors.newPassword = 'New password is required';
-    } else if (resetPasswordForm.newPassword.length < 6) {
-      errors.newPassword = 'Password must be at least 6 characters';
+  if (!resetPasswordForm.newPassword) {
+    errors.newPassword = 'New password is required';
+  } else if (resetPasswordForm.newPassword.length < 6) {
+    errors.newPassword = 'Password must be at least 6 characters';
+  }
+
+  if (resetPasswordForm.newPassword !== resetPasswordForm.confirmPassword) {
+    errors.confirmPassword = 'Passwords do not match';
+  }
+
+  if (Object.keys(errors).length > 0) {
+    setResetPasswordErrors(errors);
+    return;
+  }
+
+  try {
+    console.log('Updating password...');
+
+    // Verify we have a valid session
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session) {
+      throw new Error('No active session found. Please request a new password reset link.');
     }
 
-    if (resetPasswordForm.newPassword !== resetPasswordForm.confirmPassword) {
-      errors.confirmPassword = 'Passwords do not match';
-    }
+    const { error } = await supabase.auth.updateUser({
+      password: resetPasswordForm.newPassword
+    });
 
-    if (Object.keys(errors).length > 0) {
-      setResetPasswordErrors(errors);
-      return;
-    }
+    if (error) throw error;
 
-    try {
-      console.log('Updating password...');
+    console.log('Password updated successfully');
 
-      const { error } = await supabase.auth.updateUser({
-        password: resetPasswordForm.newPassword
-      });
+    setSuccessMessage('Password reset successfully! You can now login with your new password.');
+    setShowSuccessPopup(true);
+    setTimeout(() => setShowSuccessPopup(false), 4000);
 
-      if (error) throw error;
+    // Close modal and clear form
+    setShowAuthModal(false);
+    setResetPasswordForm({ newPassword: '', confirmPassword: '' });
+    setResetPasswordErrors({});
 
-      console.log('Password updated successfully');
+    // Show login modal after a brief delay
+    setTimeout(() => {
+      openAuthModal('login');
+    }, 1000);
 
-      setSuccessMessage('Password reset successfully! You can now login with your new password.');
-      setShowSuccessPopup(true);
-      setTimeout(() => setShowSuccessPopup(false), 4000);
-
-      // Close modal and clear form
-      setShowAuthModal(false);
-      setResetPasswordForm({ newPassword: '', confirmPassword: '' });
-      setResetPasswordErrors({});
-
-      // Show login modal after a brief delay
-      setTimeout(() => {
-        openAuthModal('login');
-      }, 1000);
-
-    } catch (error) {
-      console.error('Password reset error:', error);
-      setResetPasswordErrors({ general: error.message });
-    }
-  };
+  } catch (error) {
+    console.error('Password reset error:', error);
+    setResetPasswordErrors({ general: error.message || 'Failed to reset password. Please request a new reset link.' });
+  }
+};
   const openAuthModal = (mode) => {
     setAuthMode(mode);
     setShowAuthModal(true);
