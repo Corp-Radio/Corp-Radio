@@ -9,8 +9,8 @@ import charlImage from "../assets/charl1.jpeg";
 import heroBg from "../assets/hero.jpeg";
 import intro from "../assets/intro.png";
 
-import introVideo from "../assets/The Business Fundamentals Show Intro.mp4";
-// import fundamentalsPreview from "../assets/fundamentals-preview.mp4";
+import fundamentalsPreview  from "../assets/The Business Fundamentals Show Intro.mp4";
+import introVideo from "../assets/Introduction.mp4";
 import corporatePreview from "../assets/Jeff Kahn - Corporate Show Intro.mp4";
 import aiPreview from "../assets/ai-preview.m4a";
 
@@ -247,7 +247,7 @@ export default function CorpRadio() {
       host: "Lester Philander",
       desc: "Tactical episodes on Sales, Marketing, HR, Funding and small-business growth.",
       img: businessShow,
-      previewVideo: introVideo,
+      previewVideo: fundamentalsPreview,
       videoType: "youtube",
       isPublic: true,
       episodes: [
