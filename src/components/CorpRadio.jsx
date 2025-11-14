@@ -246,7 +246,7 @@ export default function CorpRadio() {
       title: "Business Fundamentals Show",
       host: "Lester Philander",
       desc: "Tactical episodes on Sales, Marketing, HR, Funding and small-business growth.",
-      // img: businessShow,
+      img: businessShow,
       previewVideo: fundamentalsPreview,
       videoType: "youtube",
       isPublic: true,
