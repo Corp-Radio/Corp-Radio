@@ -246,7 +246,7 @@ export default function CorpRadio() {
       title: "Business Fundamentals Show",
       host: "Lester Philander",
       desc: "Tactical episodes on Sales, Marketing, HR, Funding and small-business growth.",
-      img: businessShow,
+      // img: businessShow,
       previewVideo: fundamentalsPreview,
       videoType: "youtube",
       isPublic: true,
@@ -2647,7 +2647,7 @@ className="sticky cursor-pointer top-4 left-full -ml-10 text-gray-400 hover:text
               <video
                 className="w-full h-full"
                 controls
-                poster={intro}
+                // poster={intro}
               >
                 <source src={introVideo} type="video/mp4" />
                 Your browser does not support the video tag.
