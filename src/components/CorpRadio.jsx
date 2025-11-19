@@ -9,7 +9,7 @@ import charlImage from "../assets/charl1.jpeg";
 import heroBg from "../assets/hero.jpeg";
 import intro from "../assets/intro.png";
 
-import fundamentalsPreview  from "../assets/The Business Fundamentals Show Intro.mp4";
+import fundamentalsPreview from "../assets/The Business Fundamentals Show Intro.mp4";
 import introVideo from "../assets/Introduction.mp4";
 import corporatePreview from "../assets/Jeff Kahn - Corporate Show Intro.mp4";
 import aiPreview from "../assets/ai-preview.m4a";
@@ -301,14 +301,20 @@ export default function CorpRadio() {
     }
   }, [publicTab]);
 
+
+  /* -------------------------------------------------------------------------------------------
+                                      AUTHORIZATION
+   -------------------------------------------------------------------------------------------*/
+
+
   // Auth functions
   const handleAuthSubmit = async (e) => {
     e.preventDefault();
-    const errors = {};
+    console.log('🔐 Auth submit started:', { authMode, registrationStep });
 
+    const errors = {};
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    // South African cellphone regex: starts with 06, 07, 08 followed by 8 digits
-    const cellPhoneRegex = /^0[6-8][0-9]{8}$/;
+    const cellPhoneRegex = /^0[1-8][0-9]{8}$/;
 
     if (authMode === 'register' && registrationStep === 1) {
       // Stage 1 validation
@@ -364,6 +370,8 @@ export default function CorpRadio() {
         setAuthErrors(errors);
         return;
       }
+
+      
     }
 
     if (authMode === 'login') {
@@ -384,18 +392,35 @@ export default function CorpRadio() {
 
     try {
       if (authMode === 'login') {
+        console.log('🔑 Attempting login...');
         const { data, error } = await supabase.auth.signInWithPassword({
           email: authForm.username,
           password: authForm.password,
         });
 
-        if (error) throw error;
+        // if (error) throw error;
 
-        const { data: profile } = await supabase
+        if (error) {
+          console.error('❌ Login error:', error);
+          throw error;
+        }
+
+        console.log('✅ Login successful:', data);
+
+
+        // const { data: profile } = await supabase
+        const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', data.user.id)
           .single();
+
+        if (profileError) {
+          console.error('⚠️ Profile fetch error:', profileError);
+        }
+
+        console.log('👤 Profile loaded:', profile);
+
 
         setCurrentUser({
           fullName: profile?.full_name || data.user.email,
@@ -424,10 +449,32 @@ export default function CorpRadio() {
         setSuccessMessage(`Welcome back, ${profile?.full_name || data.user.email}! You've successfully logged in.`);
         setShowSuccessPopup(true);
         setTimeout(() => setShowSuccessPopup(false), 4000);
+
+        console.log('✅ Login complete - state updated');
+
       }
 
-      else {
-        // Register user
+      // else {
+      //   // Register user
+      //   const { data, error } = await supabase.auth.signUp({
+      //     email: authForm.username,
+      //     password: authForm.password,
+      //     options: {
+      //       data: {
+      //         full_name: authForm.fullName,
+      //         business_name: authForm.businessName,
+      //         industry: authForm.industry,
+      //         cell_number: authForm.cellNumber,
+      //         location: authForm.location,
+      //         business_challenge: authForm.businessChallenge,
+      //       },
+      //       emailRedirectTo: `${window.location.origin}`
+      //     }
+      //   });
+
+      else if (authMode === 'register') {
+        console.log('📝 Attempting registration...');
+
         const { data, error } = await supabase.auth.signUp({
           email: authForm.username,
           password: authForm.password,
@@ -445,40 +492,81 @@ export default function CorpRadio() {
         });
 
         if (error) throw error;
-if (data?.user?.id) {
-    supabase.functions.invoke('send-registration-notification', {
-      body: { userId: data.user.id }
-    }).catch(err => {
-      console.error('Failed to send notification:', err);
-      // Don't throw - registration was successful even if notification fails
-    });
-  }
+        // if (data?.user?.id) {
+        //   supabase.functions.invoke('send-registration-notification', {
+        //     body: { userId: data.user.id }
+        //   }).catch(err => {
+        //     console.error('Failed to send notification:', err);
+        //     // Don't throw - registration was successful even if notification fails
+        //   });
+        // }
+
+        // Send notification email (don't block on this)
+      if (data?.user?.id) {
+        supabase.functions.invoke('send-registration-notification', {
+          body: { userId: data.user.id }
+        }).then(() => {
+          console.log('✅ Notification sent');
+        }).catch(err => {
+          console.error('⚠️ Notification failed:', err);
+        });
+      }
+
+        // // Check if email confirmation is required
+        // if (data?.user && !data.session) {
+        //   // Email confirmation required
+        //   setShowAuthModal(false);
+        //   setRegistrationStep(1);
+        //   setAuthForm({
+        //     fullName: '',
+        //     username: '',
+        //     password: '',
+        //     confirmPassword: '',
+        //     businessName: '',
+        //     industry: '',
+        //     cellNumber: '',
+        //     location: '',
+        //     businessChallenge: ''
+        //   });
+
+        //   setSuccessMessage('Registration successful! Please check your email (INBOX / SPAM folder) to confirm your account, then login.');
+        //   setShowSuccessPopup(true);
+        //   setTimeout(() => {
+        //     setShowSuccessPopup(false);
+        //     openAuthModal('login');
+        //   }, 5000);
+
+        //   return;
+        // }
+
         // Check if email confirmation is required
-        if (data?.user && !data.session) {
-          // Email confirmation required
-          setShowAuthModal(false);
-          setRegistrationStep(1);
-          setAuthForm({
-            fullName: '',
-            username: '',
-            password: '',
-            confirmPassword: '',
-            businessName: '',
-            industry: '',
-            cellNumber: '',
-            location: '',
-            businessChallenge: ''
-          });
+      if (data?.user && !data.session) {
+        console.log('📧 Email confirmation required');
+        
+        setShowAuthModal(false);
+        setRegistrationStep(1);
+        setAuthForm({
+          fullName: '',
+          username: '',
+          password: '',
+          confirmPassword: '',
+          businessName: '',
+          industry: '',
+          cellNumber: '',
+          location: '',
+          businessChallenge: ''
+        });
 
-          setSuccessMessage('Registration successful! Please check your email (INBOX / SPAM folder) to confirm your account, then login.');
-          setShowSuccessPopup(true);
-          setTimeout(() => {
-            setShowSuccessPopup(false);
-            openAuthModal('login');
-          }, 5000);
+        setSuccessMessage('Registration successful! Please check your email to confirm your account.');
+        setShowSuccessPopup(true);
+        
+        setTimeout(() => {
+          setShowSuccessPopup(false);
+          openAuthModal('login');
+        }, 5000);
 
-          return;
-        }
+        return;
+      }
 
         // If auto-confirmed (email confirmation disabled in Supabase)
         // Update profile with additional business information
@@ -537,6 +625,12 @@ if (data?.user?.id) {
     }
   };
 
+ /* -------------------------------------------------------------------------------------------
+                                          REGISTER
+   -------------------------------------------------------------------------------------------*/
+
+
+
   const handleForgotPassword = async (e) => {
     e.preventDefault();
     const errors = {};
@@ -570,6 +664,10 @@ if (data?.user?.id) {
       setResetErrors({ email: error.message });
     }
   };
+
+
+
+
 
   const handleChangePassword = async (e) => {
     e.preventDefault();
@@ -629,79 +727,119 @@ if (data?.user?.id) {
     }
   };
 
-  const handleLogout = async () => {
-    try {
-      await supabase.auth.signOut();
-      setIsAuthenticated(false);
-      setCurrentUser(null);
-      setCurrentView('main');
-      setShowLogoutConfirm(false);
+  // const handleLogout = async () => {
+  //   try {
+  //     await supabase.auth.signOut();
+  //     setIsAuthenticated(false);
+  //     setCurrentUser(null);
+  //     setCurrentView('main');
+  //     setShowLogoutConfirm(false);
 
-      // Show success message
-      setSuccessMessage('You have been successfully logged out. See you next time!');
-      setShowSuccessPopup(true);
-      setTimeout(() => setShowSuccessPopup(false), 4000);
+  //     // Show success message
+  //     setSuccessMessage('You have been successfully logged out. See you next time!');
+  //     setShowSuccessPopup(true);
+  //     setTimeout(() => setShowSuccessPopup(false), 4000);
 
-      // Scroll to top after a short delay
-      setTimeout(() => {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      }, 100);
-    } catch (error) {
-      console.error('Logout error:', error);
-      setAuthErrors({ general: 'An error occurred during logout. Please try again.' });
-    }
-  };
-  const handleResetPassword = async (e) => {
-  if (e) e.preventDefault();
-  
-  const errors = {};
+  //     // Scroll to top after a short delay
+  //     setTimeout(() => {
+  //       window.scrollTo({ top: 0, behavior: 'smooth' });
+  //     }, 100);
+  //   } catch (error) {
+  //     console.error('Logout error:', error);
+  //     setAuthErrors({ general: 'An error occurred during logout. Please try again.' });
+  //   }
+  // };
 
-  if (!resetPasswordForm.newPassword) {
-    errors.newPassword = 'New password is required';
-  } else if (resetPasswordForm.newPassword.length < 6) {
-    errors.newPassword = 'Password must be at least 6 characters';
-  }
 
-  if (!resetPasswordForm.confirmPassword) {
-    errors.confirmPassword = 'Please confirm your password';
-  } else if (resetPasswordForm.newPassword !== resetPasswordForm.confirmPassword) {
-    errors.confirmPassword = 'Passwords do not match';
-  }
 
-  if (Object.keys(errors).length > 0) {
-    setResetPasswordErrors(errors);
-    return;
-  }
-
+const handleLogout = async () => {
   try {
-    console.log('Updating password...');
+    console.log('🚪 Logging out...');
+    
+    const { error } = await supabase.auth.signOut();
+    
+    if (error) {
+      console.error('❌ Logout error:', error);
+      throw error;
+    }
+    
+    console.log('✅ Logout successful');
+    
+    // Clear all state
+    setIsAuthenticated(false);
+    setCurrentUser(null);
+    setCurrentView('main');
+    setShowLogoutConfirm(false);
 
-    const { error } = await supabase.auth.updateUser({
-      password: resetPasswordForm.newPassword
-    });
-
-    if (error) throw error;
-
-    console.log('Password updated successfully');
-
-    setShowAuthModal(false);
-    setAuthMode('login');
-    setResetPasswordForm({ newPassword: '', confirmPassword: '' });
-    setResetPasswordErrors({});
-
-    setSuccessMessage('Password reset successfully! You can now login with your new password.');
+    // Show success message
+    setSuccessMessage('You have been successfully logged out.');
     setShowSuccessPopup(true);
     setTimeout(() => setShowSuccessPopup(false), 4000);
 
+    // Scroll to top
     setTimeout(() => {
-      openAuthModal('login');
-    }, 1500);
-
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, 100);
+    
+    console.log('✅ Logout complete - state cleared');
   } catch (error) {
-    console.error('Password reset error:', error);
-    setResetPasswordErrors({ general: error.message || 'Failed to reset password. Please try again.' });
+    console.error('❌ Logout error:', error);
+    setAuthErrors({ general: 'Failed to logout. Please try again.' });
   }
 };
+
+
+  const handleResetPassword = async (e) => {
+    if (e) e.preventDefault();
+
+    const errors = {};
+
+    if (!resetPasswordForm.newPassword) {
+      errors.newPassword = 'New password is required';
+    } else if (resetPasswordForm.newPassword.length < 6) {
+      errors.newPassword = 'Password must be at least 6 characters';
+    }
+
+    if (!resetPasswordForm.confirmPassword) {
+      errors.confirmPassword = 'Please confirm your password';
+    } else if (resetPasswordForm.newPassword !== resetPasswordForm.confirmPassword) {
+      errors.confirmPassword = 'Passwords do not match';
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setResetPasswordErrors(errors);
+      return;
+    }
+
+    try {
+      console.log('Updating password...');
+
+      const { error } = await supabase.auth.updateUser({
+        password: resetPasswordForm.newPassword
+      });
+
+      if (error) throw error;
+
+      console.log('Password updated successfully');
+
+      setShowAuthModal(false);
+      setAuthMode('login');
+      setResetPasswordForm({ newPassword: '', confirmPassword: '' });
+      setResetPasswordErrors({});
+
+      setSuccessMessage('Password reset successfully! You can now login with your new password.');
+      setShowSuccessPopup(true);
+      setTimeout(() => setShowSuccessPopup(false), 4000);
+
+      setTimeout(() => {
+        openAuthModal('login');
+      }, 1500);
+
+    } catch (error) {
+      console.error('Password reset error:', error);
+      setResetPasswordErrors({ general: error.message || 'Failed to reset password. Please try again.' });
+    }
+  };
 
   const openAuthModal = (mode) => {
     setAuthMode(mode);
@@ -1178,164 +1316,164 @@ if (data?.user?.id) {
                 )}
 
                 {authMode === 'register' && registrationStep === 2 && (
-                <>
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1">Business Name</label>
-                    <input
-                      type="text"
-                      value={authForm.businessName}
-                      onChange={(e) => setAuthForm({ ...authForm, businessName: e.target.value })}
-                      className={`w-full p-3 border-2 rounded-lg outline-none transition ${authErrors.businessName ? 'border-red-500' : 'border-gray-300 focus:border-[#001F3F]'}`}
-                      placeholder="Your business name"
-                    />
-                    {authErrors.businessName && <p className="text-red-500 text-xs mt-1">{authErrors.businessName}</p>}
-                  </div>
+                  <>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1">Business Name</label>
+                      <input
+                        type="text"
+                        value={authForm.businessName}
+                        onChange={(e) => setAuthForm({ ...authForm, businessName: e.target.value })}
+                        className={`w-full p-3 border-2 rounded-lg outline-none transition ${authErrors.businessName ? 'border-red-500' : 'border-gray-300 focus:border-[#001F3F]'}`}
+                        placeholder="Your business name"
+                      />
+                      {authErrors.businessName && <p className="text-red-500 text-xs mt-1">{authErrors.businessName}</p>}
+                    </div>
 
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1">Industry</label>
-                    <select
-                      value={authForm.industry}
-                      onChange={(e) => setAuthForm({ ...authForm, industry: e.target.value })}
-                      className={`w-full p-3 border-2 rounded-lg outline-none transition ${authErrors.industry ? 'border-red-500' : 'border-gray-300 focus:border-[#001F3F]'}`}
-                    >
-                      <option value="">Select your industry</option>
-                      <option value="Technology">Technology</option>
-                      <option value="Finance">Finance</option>
-                      <option value="Healthcare">Healthcare</option>
-                      <option value="Retail">Retail</option>
-                      <option value="Manufacturing">Manufacturing</option>
-                      <option value="Consulting">Consulting</option>
-                      <option value="Real Estate">Real Estate</option>
-                      <option value="Education">Education</option>
-                      <option value="Hospitality">Hospitality</option>
-                      <option value="Other">Other</option>
-                    </select>
-                    {authErrors.industry && <p className="text-red-500 text-xs mt-1">{authErrors.industry}</p>}
-                  </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1">Industry</label>
+                      <select
+                        value={authForm.industry}
+                        onChange={(e) => setAuthForm({ ...authForm, industry: e.target.value })}
+                        className={`w-full p-3 border-2 rounded-lg outline-none transition ${authErrors.industry ? 'border-red-500' : 'border-gray-300 focus:border-[#001F3F]'}`}
+                      >
+                        <option value="">Select your industry</option>
+                        <option value="Technology">Technology</option>
+                        <option value="Finance">Finance</option>
+                        <option value="Healthcare">Healthcare</option>
+                        <option value="Retail">Retail</option>
+                        <option value="Manufacturing">Manufacturing</option>
+                        <option value="Consulting">Consulting</option>
+                        <option value="Real Estate">Real Estate</option>
+                        <option value="Education">Education</option>
+                        <option value="Hospitality">Hospitality</option>
+                        <option value="Other">Other</option>
+                      </select>
+                      {authErrors.industry && <p className="text-red-500 text-xs mt-1">{authErrors.industry}</p>}
+                    </div>
 
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1">Cell Number (SA)</label>
-                    <input
-                      type="tel"
-                      value={authForm.cellNumber}
-                      onChange={(e) => setAuthForm({ ...authForm, cellNumber: e.target.value })}
-                      className={`w-full p-3 border-2 rounded-lg outline-none transition ${authErrors.cellNumber ? 'border-red-500' : 'border-gray-300 focus:border-[#001F3F]'}`}
-                      placeholder="0821234567"
-                    />
-                    {authErrors.cellNumber && <p className="text-red-500 text-xs mt-1">{authErrors.cellNumber}</p>}
-                  </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1">Cell Number (SA)</label>
+                      <input
+                        type="tel"
+                        value={authForm.cellNumber}
+                        onChange={(e) => setAuthForm({ ...authForm, cellNumber: e.target.value })}
+                        className={`w-full p-3 border-2 rounded-lg outline-none transition ${authErrors.cellNumber ? 'border-red-500' : 'border-gray-300 focus:border-[#001F3F]'}`}
+                        placeholder="0821234567"
+                      />
+                      {authErrors.cellNumber && <p className="text-red-500 text-xs mt-1">{authErrors.cellNumber}</p>}
+                    </div>
 
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1">Location</label>
-                    <input
-                      type="text"
-                      value={authForm.location}
-                      onChange={(e) => setAuthForm({ ...authForm, location: e.target.value })}
-                      className={`w-full p-3 border-2 rounded-lg outline-none transition ${authErrors.location ? 'border-red-500' : 'border-gray-300 focus:border-[#001F3F]'}`}
-                      placeholder="City, Province"
-                    />
-                    {authErrors.location && <p className="text-red-500 text-xs mt-1">{authErrors.location}</p>}
-                  </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1">Location</label>
+                      <input
+                        type="text"
+                        value={authForm.location}
+                        onChange={(e) => setAuthForm({ ...authForm, location: e.target.value })}
+                        className={`w-full p-3 border-2 rounded-lg outline-none transition ${authErrors.location ? 'border-red-500' : 'border-gray-300 focus:border-[#001F3F]'}`}
+                        placeholder="City, Province"
+                      />
+                      {authErrors.location && <p className="text-red-500 text-xs mt-1">{authErrors.location}</p>}
+                    </div>
 
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1">Current Business Challenge</label>
-                    <textarea
-                      value={authForm.businessChallenge}
-                      onChange={(e) => setAuthForm({ ...authForm, businessChallenge: e.target.value })}
-                      className={`w-full p-3 border-2 rounded-lg outline-none transition ${authErrors.businessChallenge ? 'border-red-500' : 'border-gray-300 focus:border-[#001F3F]'}`}
-                      placeholder="Describe your main business challenge..."
-                      rows={3}
-                    />
-                    {authErrors.businessChallenge && <p className="text-red-500 text-xs mt-1">{authErrors.businessChallenge}</p>}
-                  </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1">Current Business Challenge</label>
+                      <textarea
+                        value={authForm.businessChallenge}
+                        onChange={(e) => setAuthForm({ ...authForm, businessChallenge: e.target.value })}
+                        className={`w-full p-3 border-2 rounded-lg outline-none transition ${authErrors.businessChallenge ? 'border-red-500' : 'border-gray-300 focus:border-[#001F3F]'}`}
+                        placeholder="Describe your main business challenge..."
+                        rows={3}
+                      />
+                      {authErrors.businessChallenge && <p className="text-red-500 text-xs mt-1">{authErrors.businessChallenge}</p>}
+                    </div>
 
-                  <div className="flex gap-3">
+                    <div className="flex gap-3">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setRegistrationStep(1);
+                          setAuthErrors({});
+                        }}
+                        className="flex-1 border-2 cursor-pointer border-gray-300 text-gray-700 py-3 rounded-lg font-bold hover:bg-gray-50 transition"
+                      >
+                        Back
+                      </button>
+                      <button type="submit" className="flex-1 bg-[#001F3F] cursor-pointer text-white py-3 rounded-lg font-bold hover:bg-blue-900 transition">
+                        Complete Registration
+                      </button>
+                    </div>
+                  </>
+                )}
+
+                {authMode === 'reset-password' && (
+                  <form onSubmit={handleResetPassword} className="space-y-4">
+                    {resetPasswordErrors.general && (
+                      <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">
+                        {resetPasswordErrors.general}
+                      </div>
+                    )}
+
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1">New Password</label>
+                      <div className="relative">
+                        <input
+                          type={showPassword ? "text" : "password"}
+                          value={resetPasswordForm.newPassword}
+                          onChange={(e) => {
+                            setResetPasswordForm({ ...resetPasswordForm, newPassword: e.target.value });
+                            if (resetPasswordErrors.newPassword) {
+                              setResetPasswordErrors({ ...resetPasswordErrors, newPassword: '' });
+                            }
+                          }}
+                          className={`w-full p-3 border-2 rounded-lg outline-none transition pr-10 ${resetPasswordErrors.newPassword ? 'border-red-500' : 'border-gray-300 focus:border-[#001F3F]'}`}
+                          placeholder="Enter new password (min 6 characters)"
+                          autoFocus
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute cursor-pointer right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                        >
+                          {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                        </button>
+                      </div>
+                      {resetPasswordErrors.newPassword && <p className="text-red-500 text-xs mt-1">{resetPasswordErrors.newPassword}</p>}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1">Confirm New Password</label>
+                      <div className="relative">
+                        <input
+                          type={showConfirmPassword ? "text" : "password"}
+                          value={resetPasswordForm.confirmPassword}
+                          onChange={(e) => {
+                            setResetPasswordForm({ ...resetPasswordForm, confirmPassword: e.target.value });
+                            if (resetPasswordErrors.confirmPassword) {
+                              setResetPasswordErrors({ ...resetPasswordErrors, confirmPassword: '' });
+                            }
+                          }}
+                          className={`w-full p-3 border-2 rounded-lg outline-none transition pr-10 ${resetPasswordErrors.confirmPassword ? 'border-red-500' : 'border-gray-300 focus:border-[#001F3F]'}`}
+                          placeholder="Confirm new password"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                          className="absolute cursor-pointer right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                        >
+                          {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                        </button>
+                      </div>
+                      {resetPasswordErrors.confirmPassword && <p className="text-red-500 text-xs mt-1">{resetPasswordErrors.confirmPassword}</p>}
+                    </div>
+
                     <button
-                      type="button"
-                      onClick={() => {
-                        setRegistrationStep(1);
-                        setAuthErrors({});
-                      }}
-                      className="flex-1 border-2 cursor-pointer border-gray-300 text-gray-700 py-3 rounded-lg font-bold hover:bg-gray-50 transition"
+                      type="submit"
+                      className="w-full bg-[#001F3F] cursor-pointer text-white py-3 rounded-lg font-bold hover:bg-blue-900 transition"
                     >
-                      Back
+                      Reset Password
                     </button>
-                    <button type="submit" className="flex-1 bg-[#001F3F] cursor-pointer text-white py-3 rounded-lg font-bold hover:bg-blue-900 transition">
-                      Complete Registration
-                    </button>
-                  </div>
-                </>
-              )}
-
-              {authMode === 'reset-password' && (
-                <form onSubmit={handleResetPassword} className="space-y-4">
-                  {resetPasswordErrors.general && (
-                    <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">
-                      {resetPasswordErrors.general}
-                    </div>
-                  )}
-
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1">New Password</label>
-                    <div className="relative">
-                      <input
-                        type={showPassword ? "text" : "password"}
-                        value={resetPasswordForm.newPassword}
-                        onChange={(e) => {
-                          setResetPasswordForm({ ...resetPasswordForm, newPassword: e.target.value });
-                          if (resetPasswordErrors.newPassword) {
-                            setResetPasswordErrors({ ...resetPasswordErrors, newPassword: '' });
-                          }
-                        }}
-                        className={`w-full p-3 border-2 rounded-lg outline-none transition pr-10 ${resetPasswordErrors.newPassword ? 'border-red-500' : 'border-gray-300 focus:border-[#001F3F]'}`}
-                        placeholder="Enter new password (min 6 characters)"
-                        autoFocus
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute cursor-pointer right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                      >
-                        {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                      </button>
-                    </div>
-                    {resetPasswordErrors.newPassword && <p className="text-red-500 text-xs mt-1">{resetPasswordErrors.newPassword}</p>}
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1">Confirm New Password</label>
-                    <div className="relative">
-                      <input
-                        type={showConfirmPassword ? "text" : "password"}
-                        value={resetPasswordForm.confirmPassword}
-                        onChange={(e) => {
-                          setResetPasswordForm({ ...resetPasswordForm, confirmPassword: e.target.value });
-                          if (resetPasswordErrors.confirmPassword) {
-                            setResetPasswordErrors({ ...resetPasswordErrors, confirmPassword: '' });
-                          }
-                        }}
-                        className={`w-full p-3 border-2 rounded-lg outline-none transition pr-10 ${resetPasswordErrors.confirmPassword ? 'border-red-500' : 'border-gray-300 focus:border-[#001F3F]'}`}
-                        placeholder="Confirm new password"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        className="absolute cursor-pointer right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                      >
-                        {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                      </button>
-                    </div>
-                    {resetPasswordErrors.confirmPassword && <p className="text-red-500 text-xs mt-1">{resetPasswordErrors.confirmPassword}</p>}
-                  </div>
-
-                  <button 
-                    type="submit"
-                    className="w-full bg-[#001F3F] cursor-pointer text-white py-3 rounded-lg font-bold hover:bg-blue-900 transition"
-                  >
-                    Reset Password
-                  </button>
-                </form>
-              )}
+                  </form>
+                )}
 
                 {authMode === 'login' && (
                   <>
@@ -1455,7 +1593,7 @@ if (data?.user?.id) {
       <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto p-8 relative">
         <button
           onClick={() => setShowLegalModal(false)}
-className="sticky cursor-pointer top-4 left-full -ml-10 text-gray-400 hover:text-gray-600 z-10">          <X className="w-6 h-6" />
+          className="sticky cursor-pointer top-4 left-full -ml-10 text-gray-400 hover:text-gray-600 z-10">          <X className="w-6 h-6" />
         </button>
 
         <div className="prose prose-sm max-w-none">
@@ -2134,7 +2272,7 @@ className="sticky cursor-pointer top-4 left-full -ml-10 text-gray-400 hover:text
                     {resetPasswordErrors.confirmPassword && <p className="text-red-500 text-xs mt-1">{resetPasswordErrors.confirmPassword}</p>}
                   </div>
 
-                  <button 
+                  <button
                     type="submit"
                     className="w-full bg-[#001F3F] cursor-pointer text-white py-3 rounded-lg font-bold hover:bg-blue-900 transition"
                   >
@@ -2654,7 +2792,7 @@ className="sticky cursor-pointer top-4 left-full -ml-10 text-gray-400 hover:text
               <video
                 className="w-full h-full"
                 controls
-                // poster={intro}
+              // poster={intro}
               >
                 <source src={introVideo} type="video/mp4" />
                 Your browser does not support the video tag.
