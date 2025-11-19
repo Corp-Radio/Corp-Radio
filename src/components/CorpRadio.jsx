@@ -473,11 +473,11 @@ export default function CorpRadio() {
           }
         });
 
-        if (error) {throw error};
-if (data?.user && data.user.identities && data.user.identities.length === 0) {
-    console.log('⚠️ User already exists');
-    throw new Error('This email is already registered. Please login instead.');
-  }
+        if (error) { throw error };
+        if (data?.user && data.user.identities && data.user.identities.length === 0) {
+          console.log('⚠️ User already exists');
+          throw new Error('This email is already registered. Please login instead.');
+        }
 
         // Send notification email (don't block on this)
         if (data?.user?.id) {
@@ -508,7 +508,7 @@ if (data?.user && data.user.identities && data.user.identities.length === 0) {
             businessChallenge: ''
           });
 
-          setSuccessMessage('Registration successful! Please check your email to confirm your account.');
+          setSuccessMessage('Registration successful! Please check your email \<\/b\>(INBOX/ SPAM)\<\/b\> to confirm your account.');
           setShowSuccessPopup(true);
 
           setTimeout(() => {
@@ -561,30 +561,32 @@ if (data?.user && data.user.identities && data.user.identities.length === 0) {
       console.error('Auth error:', error);
       let errorMessage = 'An unexpected error occurred. Please try again.';
 
-      if (error.message) {
+      // if (error.message) {
         // Try to make the error message more user-friendly
-        if (error.message.includes('duplicate key')) {
-          errorMessage = 'This email is already registered. Please login instead.';
+        // if (error.message.includes('duplicate key')) {
+        //   errorMessage = 'This email is already registered. Please login instead.';
 
-          setTimeout(() => {
-            setAuthMode('login');
-            setAuthForm({
-              ...authForm,
-              password: '',
-              confirmPassword: '',
-              businessName: '',
-              industry: '',
-              cellNumber: '',
-              location: '',
-              businessChallenge: ''
-            });
-          }, 3000);
-        } else if (error.message.includes('network')) {
+        //   setTimeout(() => {
+        //     setAuthMode('login');
+        //     setAuthForm({
+        //       ...authForm,
+        //       password: '',
+        //       confirmPassword: '',
+        //       businessName: '',
+        //       industry: '',
+        //       cellNumber: '',
+        //       location: '',
+        //       businessChallenge: ''
+        //     });
+        //   }, 3000);
+
+         //} 
+        if (error.message.includes('network')) {
           errorMessage = 'Network error. Please check your internet connection.';
         } else {
           errorMessage = error.message;
         }
-      }
+      // }
 
       setAuthErrors({ general: errorMessage });
       setShowAuthModal(true);
@@ -620,15 +622,19 @@ if (data?.user && data.user.identities && data.user.identities.length === 0) {
       });
 
       if (error) throw error;
-
+const emailToShow = resetEmail;
       setShowResetSuccess(true);
-      setResetEmail('');
+      // setResetEmail('');
       setTimeout(() => {
         setShowResetSuccess(false);
         setShowForgotPassword(false);
+              setResetEmail('');
+      setResetErrors({});
+
       }, 8000);
-    } catch (error) {
-      setResetErrors({ email: error.message });
+    } 
+    catch (error) {
+      setResetErrors({ email: error.message || 'Failed to send reset email. Please try again.' });
     }
   };
 
@@ -684,40 +690,16 @@ if (data?.user && data.user.identities && data.user.identities.length === 0) {
 
       setSuccessMessage('Password changed successfully!');
       setShowSuccessPopup(true);
-      setTimeout(() => setShowSuccessPopup(false), 4000);
 
       setShowChangePassword(false);
       setChangePasswordForm({ currentPassword: '', newPassword: '', confirmNewPassword: '' });
       setChangePasswordErrors({});
+            setTimeout(() => setShowSuccessPopup(false), 4000);
+
     } catch (error) {
-      setChangePasswordErrors({ general: error.message });
+    setChangePasswordErrors({ general: error.message || 'Failed to change password' });
     }
   };
-
-  // const handleLogout = async () => {
-  //   try {
-  //     await supabase.auth.signOut();
-  //     setIsAuthenticated(false);
-  //     setCurrentUser(null);
-  //     setCurrentView('main');
-  //     setShowLogoutConfirm(false);
-
-  //     // Show success message
-  //     setSuccessMessage('You have been successfully logged out. See you next time!');
-  //     setShowSuccessPopup(true);
-  //     setTimeout(() => setShowSuccessPopup(false), 4000);
-
-  //     // Scroll to top after a short delay
-  //     setTimeout(() => {
-  //       window.scrollTo({ top: 0, behavior: 'smooth' });
-  //     }, 100);
-  //   } catch (error) {
-  //     console.error('Logout error:', error);
-  //     setAuthErrors({ general: 'An error occurred during logout. Please try again.' });
-  //   }
-  // };
-
-
 
   const handleLogout = async () => {
     try {
@@ -788,19 +770,21 @@ if (data?.user && data.user.identities && data.user.identities.length === 0) {
       if (error) throw error;
 
       console.log('Password updated successfully');
+  setSuccessMessage('Password reset successfully! You can now login with your new password.');
+      setShowSuccessPopup(true);
 
       setShowAuthModal(false);
       setAuthMode('login');
       setResetPasswordForm({ newPassword: '', confirmPassword: '' });
       setResetPasswordErrors({});
 
-      setSuccessMessage('Password reset successfully! You can now login with your new password.');
-      setShowSuccessPopup(true);
-      setTimeout(() => setShowSuccessPopup(false), 4000);
-
+    setTimeout(() => {
+      setShowSuccessPopup(false);
+      // Reopen login modal after 1.5 seconds
       setTimeout(() => {
         openAuthModal('login');
       }, 1500);
+    }, 4000);
 
     } catch (error) {
       console.error('Password reset error:', error);
@@ -1785,10 +1769,10 @@ if (data?.user && data.user.identities && data.user.identities.length === 0) {
                 </div>
                 <h3 className="text-xl font-bold text-gray-900 mb-2">Check Your Email!</h3>
                 <p className="text-gray-600 mb-4">
-                  We've sent a password reset link to <span className="font-semibold text-[#001F3F]">{resetEmail}</span>
+                  We've sent a password reset link to <span className="font-semibold text-[#001F3F]">{resetEmail}</span> 
                 </p>
                 <p className="text-sm text-gray-500">
-                  Click the link in the email (INBOX/ SPAM) to reset your password. The link will expire in 1 hour.
+                  Click the link in the email <b>(INBOX/ SPAM)</b> to reset your password. The link will expire in 1 hour.
                 </p>
               </div>
             ) : (
