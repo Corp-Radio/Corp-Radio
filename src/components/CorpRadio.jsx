@@ -445,7 +445,14 @@ export default function CorpRadio() {
         });
 
         if (error) throw error;
-
+if (data?.user?.id) {
+    supabase.functions.invoke('send-registration-notification', {
+      body: { userId: data.user.id }
+    }).catch(err => {
+      console.error('Failed to send notification:', err);
+      // Don't throw - registration was successful even if notification fails
+    });
+  }
         // Check if email confirmation is required
         if (data?.user && !data.session) {
           // Email confirmation required
@@ -463,7 +470,7 @@ export default function CorpRadio() {
             businessChallenge: ''
           });
 
-          setSuccessMessage('Registration successful! Please check your email to confirm your account, then login.');
+          setSuccessMessage('Registration successful! Please check your email (INBOX / SPAM folder) to confirm your account, then login.');
           setShowSuccessPopup(true);
           setTimeout(() => {
             setShowSuccessPopup(false);
@@ -1676,7 +1683,7 @@ className="sticky cursor-pointer top-4 left-full -ml-10 text-gray-400 hover:text
                   We've sent a password reset link to <span className="font-semibold text-[#001F3F]">{resetEmail}</span>
                 </p>
                 <p className="text-sm text-gray-500">
-                  Click the link in the email to reset your password. The link will expire in 1 hour.
+                  Click the link in the email (INBOX/ SPAM) to reset your password. The link will expire in 1 hour.
                 </p>
               </div>
             ) : (
