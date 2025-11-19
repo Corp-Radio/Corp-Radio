@@ -371,7 +371,7 @@ export default function CorpRadio() {
         return;
       }
 
-      
+
     }
 
     if (authMode === 'login') {
@@ -454,24 +454,6 @@ export default function CorpRadio() {
 
       }
 
-      // else {
-      //   // Register user
-      //   const { data, error } = await supabase.auth.signUp({
-      //     email: authForm.username,
-      //     password: authForm.password,
-      //     options: {
-      //       data: {
-      //         full_name: authForm.fullName,
-      //         business_name: authForm.businessName,
-      //         industry: authForm.industry,
-      //         cell_number: authForm.cellNumber,
-      //         location: authForm.location,
-      //         business_challenge: authForm.businessChallenge,
-      //       },
-      //       emailRedirectTo: `${window.location.origin}`
-      //     }
-      //   });
-
       else if (authMode === 'register') {
         console.log('📝 Attempting registration...');
 
@@ -491,82 +473,51 @@ export default function CorpRadio() {
           }
         });
 
-        if (error) throw error;
-        // if (data?.user?.id) {
-        //   supabase.functions.invoke('send-registration-notification', {
-        //     body: { userId: data.user.id }
-        //   }).catch(err => {
-        //     console.error('Failed to send notification:', err);
-        //     // Don't throw - registration was successful even if notification fails
-        //   });
-        // }
+        if (error) {throw error};
+if (data?.user && data.user.identities && data.user.identities.length === 0) {
+    console.log('⚠️ User already exists');
+    throw new Error('This email is already registered. Please login instead.');
+  }
 
         // Send notification email (don't block on this)
-      if (data?.user?.id) {
-        supabase.functions.invoke('send-registration-notification', {
-          body: { userId: data.user.id }
-        }).then(() => {
-          console.log('✅ Notification sent');
-        }).catch(err => {
-          console.error('⚠️ Notification failed:', err);
-        });
-      }
-
-        // // Check if email confirmation is required
-        // if (data?.user && !data.session) {
-        //   // Email confirmation required
-        //   setShowAuthModal(false);
-        //   setRegistrationStep(1);
-        //   setAuthForm({
-        //     fullName: '',
-        //     username: '',
-        //     password: '',
-        //     confirmPassword: '',
-        //     businessName: '',
-        //     industry: '',
-        //     cellNumber: '',
-        //     location: '',
-        //     businessChallenge: ''
-        //   });
-
-        //   setSuccessMessage('Registration successful! Please check your email (INBOX / SPAM folder) to confirm your account, then login.');
-        //   setShowSuccessPopup(true);
-        //   setTimeout(() => {
-        //     setShowSuccessPopup(false);
-        //     openAuthModal('login');
-        //   }, 5000);
-
-        //   return;
-        // }
+        if (data?.user?.id) {
+          supabase.functions.invoke('send-registration-notification', {
+            body: { userId: data.user.id }
+          }).then(() => {
+            console.log('✅ Notification sent');
+          }).catch(err => {
+            console.error('⚠️ Notification failed:', err);
+          });
+        }
 
         // Check if email confirmation is required
-      if (data?.user && !data.session) {
-        console.log('📧 Email confirmation required');
-        
-        setShowAuthModal(false);
-        setRegistrationStep(1);
-        setAuthForm({
-          fullName: '',
-          username: '',
-          password: '',
-          confirmPassword: '',
-          businessName: '',
-          industry: '',
-          cellNumber: '',
-          location: '',
-          businessChallenge: ''
-        });
+        if (data?.user && !data.session) {
+          console.log('📧 Email confirmation required');
 
-        setSuccessMessage('Registration successful! Please check your email to confirm your account.');
-        setShowSuccessPopup(true);
-        
-        setTimeout(() => {
-          setShowSuccessPopup(false);
-          openAuthModal('login');
-        }, 5000);
+          setShowAuthModal(false);
+          setRegistrationStep(1);
+          setAuthForm({
+            fullName: '',
+            username: '',
+            password: '',
+            confirmPassword: '',
+            businessName: '',
+            industry: '',
+            cellNumber: '',
+            location: '',
+            businessChallenge: ''
+          });
 
-        return;
-      }
+          setSuccessMessage('Registration successful! Please check your email to confirm your account.');
+          setShowSuccessPopup(true);
+
+          setTimeout(() => {
+            setShowSuccessPopup(false);
+            openAuthModal('login');
+          }, 5000);
+
+          return;
+        }
 
         // If auto-confirmed (email confirmation disabled in Supabase)
         // Update profile with additional business information
@@ -614,6 +565,20 @@ export default function CorpRadio() {
         // Try to make the error message more user-friendly
         if (error.message.includes('duplicate key')) {
           errorMessage = 'This email is already registered. Please login instead.';
+
+          setTimeout(() => {
+            setAuthMode('login');
+            setAuthForm({
+              ...authForm,
+              password: '',
+              confirmPassword: '',
+              businessName: '',
+              industry: '',
+              cellNumber: '',
+              location: '',
+              businessChallenge: ''
+            });
+          }, 3000);
         } else if (error.message.includes('network')) {
           errorMessage = 'Network error. Please check your internet connection.';
         } else {
@@ -622,12 +587,14 @@ export default function CorpRadio() {
       }
 
       setAuthErrors({ general: errorMessage });
+      setShowAuthModal(true);
+      setRegistrationStep(1);
     }
   };
 
- /* -------------------------------------------------------------------------------------------
-                                          REGISTER
-   -------------------------------------------------------------------------------------------*/
+  /* -------------------------------------------------------------------------------------------
+                                           REGISTER
+    -------------------------------------------------------------------------------------------*/
 
 
 
@@ -752,41 +719,41 @@ export default function CorpRadio() {
 
 
 
-const handleLogout = async () => {
-  try {
-    console.log('🚪 Logging out...');
-    
-    const { error } = await supabase.auth.signOut();
-    
-    if (error) {
+  const handleLogout = async () => {
+    try {
+      console.log('🚪 Logging out...');
+
+      const { error } = await supabase.auth.signOut();
+
+      if (error) {
+        console.error('❌ Logout error:', error);
+        throw error;
+      }
+
+      console.log('✅ Logout successful');
+
+      // Clear all state
+      setIsAuthenticated(false);
+      setCurrentUser(null);
+      setCurrentView('main');
+      setShowLogoutConfirm(false);
+
+      // Show success message
+      setSuccessMessage('You have been successfully logged out.');
+      setShowSuccessPopup(true);
+      setTimeout(() => setShowSuccessPopup(false), 4000);
+
+      // Scroll to top
+      setTimeout(() => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }, 100);
+
+      console.log('✅ Logout complete - state cleared');
+    } catch (error) {
       console.error('❌ Logout error:', error);
-      throw error;
+      setAuthErrors({ general: 'Failed to logout. Please try again.' });
     }
-    
-    console.log('✅ Logout successful');
-    
-    // Clear all state
-    setIsAuthenticated(false);
-    setCurrentUser(null);
-    setCurrentView('main');
-    setShowLogoutConfirm(false);
-
-    // Show success message
-    setSuccessMessage('You have been successfully logged out.');
-    setShowSuccessPopup(true);
-    setTimeout(() => setShowSuccessPopup(false), 4000);
-
-    // Scroll to top
-    setTimeout(() => {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }, 100);
-    
-    console.log('✅ Logout complete - state cleared');
-  } catch (error) {
-    console.error('❌ Logout error:', error);
-    setAuthErrors({ general: 'Failed to logout. Please try again.' });
-  }
-};
+  };
 
 
   const handleResetPassword = async (e) => {
